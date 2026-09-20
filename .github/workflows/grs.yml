@@ -31,3 +31,8 @@ jobs:
           git add profile/top-langs.svg
           git commit -m "Update Top Languages" || exit 0
           git push
+
+
+concurrency: 
+
+
