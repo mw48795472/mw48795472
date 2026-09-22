@@ -19,7 +19,7 @@ jobs:
         uses: stats-organization/github-readme-stats-action@v2
         with:
           card: stats
-          options: username=${{ github.repository_mw48795472 }}&show_icons=true
+          options: username=mw48795472&show_icons=true
           path: profile/stats.svg
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -27,7 +27,7 @@ jobs:
         uses: stats-organization/github-readme-stats-action@v2
         with:
           card: top-langs
-          options: username=${{ github.repository_mw48795472 }}&layout=compact&langs_count=6
+          options: username=mw48795472&layout=compact&langs_count=6&exclude_repo=Tour-Navigator-App
           path: profile/top-langs.svg
           token: ${{ secrets.GITHUB_TOKEN }}
 
