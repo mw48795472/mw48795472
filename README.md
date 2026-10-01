@@ -11,8 +11,6 @@
 | **Tool/Collaboration** | ![VS Code](https://img.shields.io/badge/VSCode-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white) ![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white) ![Git](https://img.shields.io/badge/git-F05032?style=for-the-badge&logo=git&logoColor=white) ![Claude](https://img.shields.io/badge/Claude-D97757?style=for-the-badge&logo=claude&logoColor=white) ![Google Colab](https://img.shields.io/badge/Google_Colab-F9AB00?style=for-the-badge&logo=googlecolab&logoColor=white)|
 
 
-[![BOJ](https://bojstat.vulcan.site/v2/ko/mw48795472)](https://www.acmicpc.net/user/mw48795472)
-
 
 
 ![Stats](./profile/stats.svg)
