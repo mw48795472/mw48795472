@@ -108,19 +108,14 @@ jobs:
           writeFileSync(binaryPath, binarySource);
           require(binaryPath);
           console.log("::notice::Binary reader bounds check verified.");
-          // Recover this approved repository when bundled Linguist excludes its entire tree.
-          // Keep the original classifier and language metadata; only relax file exclusions
-          // for this repository after the normal scan returns no classified files.
-          const bundledLinguistPath = require.resolve("/metrics/node_modules/linguist-js");
-          const bundledLinguist = require(bundledLinguistPath);
-          require.cache[bundledLinguistPath].exports = async function(path, options) {
-            let result = await bundledLinguist(path, options);
-            if (path.endsWith("-TourLabOrganization_data_server") && !Object.keys(result.files.results).length) {
-              result = await bundledLinguist(path, {...options, keepVendored: true, checkIgnored: false});
-              console.log("::notice::data-server recovered " + Object.keys(result.files.results).length + " classified files after an empty scan.");
-            }
-            return result;
-          };
+          // Analyze tracked source in data-server without the bundled exclusion filters.
+          // This is scoped to the approved repository; contribution author filters still apply.
+          const indepthPath = "/metrics/source/plugins/languages/analyzer/indepth.mjs";
+          let indepthSource = readFileSync(indepthPath, "utf8");
+          const linguistCall = "await linguist(path)";
+          if (indepthSource.split(linguistCall).length !== 2) throw new Error("Unsupported Linguist call site");
+          indepthSource = indepthSource.replace(linguistCall, 'await linguist(path, path.endsWith("-TourLabOrganization_data_server") ? {keepVendored: true, checkIgnored: false} : {})');
+          writeFileSync(indepthPath, indepthSource);
           const {IndepthAnalyzer} = await import("/metrics/source/plugins/languages/analyzer/indepth.mjs");
           
           // Normalize the secret exactly as the original action input reader does.
