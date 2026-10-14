@@ -2,15 +2,23 @@ name: Update README cards
 
 on:
   schedule:
-    - cron: "*/30 * * * *" 
+    - cron: "*/30 * * * *"
+    # Run the more expensive contribution analysis once a day (09:17 KST).
+    - cron: "17 0 * * *"
   workflow_dispatch:
+
+concurrency:
+  group: readme-cards-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 30
     permissions:
       contents: write
+    env:
+      HAS_METRICS_TOKEN: ${{ secrets.METRICS_TOKEN != '' }}
 
     steps:
       - uses: actions/checkout@v6
@@ -23,13 +31,57 @@ jobs:
           path: profile/stats.svg
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate top languages card
+      # Keep the existing card working until organization access is configured.
+      - name: Generate top languages card (personal repositories fallback)
+        if: env.HAS_METRICS_TOKEN != 'true'
         uses: stats-organization/github-readme-stats-action@v2
         with:
           card: top-langs
           options: username=mw48795472&layout=compact&langs_count=6&exclude_repo=Tour-Navigator-App
           path: profile/top-langs.svg
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate languages from personal and organization contributions
+        id: contribution_languages
+        if: >-
+          env.HAS_METRICS_TOKEN == 'true' &&
+          (github.event_name == 'workflow_dispatch' || github.event.schedule == '17 0 * * *')
+        continue-on-error: true
+        uses: lowlighter/metrics@65836723097537a54cd8eb90f61839426b4266b6 # latest
+        with:
+          token: ${{ secrets.METRICS_TOKEN }}
+          user: mw48795472
+          filename: top-langs.svg
+          output_action: none
+          base: ""
+          config_timezone: Asia/Seoul
+          repositories_affiliations: owner, collaborator, organization_member
+          commits_authoring: ${{ vars.METRICS_COMMIT_AUTHORS || 'mw48795472' }}
+          plugin_languages: yes
+          plugin_languages_indepth: yes
+          plugin_languages_sections: most-used
+          plugin_languages_details: percentage
+          plugin_languages_limit: 6
+          plugin_languages_skipped: Tour-Navigator-App
+          plugin_languages_indepth_custom: ${{ vars.LANGUAGE_REPOSITORIES }}
+          plugin_languages_analysis_timeout: 15
+          plugins_errors_fatal: yes
+
+      - name: Install contribution languages card
+        if: steps.contribution_languages.outcome == 'success'
+        run: |
+          test -s /metrics_renders/top-langs.svg
+          cp /metrics_renders/top-langs.svg profile/top-langs.svg
+
+      - name: Report contribution analysis failure
+        if: steps.contribution_languages.outcome == 'failure'
+        run: echo "::warning::Language analysis failed. Keeping the previous card. Check METRICS_TOKEN access and the analysis logs."
+
+      - name: Explain personal repositories fallback
+        if: >-
+          env.HAS_METRICS_TOKEN != 'true' &&
+          (github.event_name == 'workflow_dispatch' || github.event.schedule == '17 0 * * *')
+        run: echo "::notice::Set the METRICS_TOKEN Actions secret to enable organization contribution languages. Until then, the card includes personal repositories only."
 
       - name: Generate pin card
         uses: stats-organization/github-readme-stats-action@v2
@@ -44,5 +96,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add profile/*.svg
-          git commit -m "Update README cards" || exit 0
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Update README cards"
           git push
