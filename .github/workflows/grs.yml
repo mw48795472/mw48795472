@@ -42,42 +42,89 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate languages from personal and organization contributions
-        # Metrics derives its image source from this step ID.
         id: lowlighter_metrics
         if: >-
           env.HAS_METRICS_TOKEN == 'true' &&
           (github.event_name == 'workflow_dispatch' || github.event.schedule == '17 0 * * *')
         continue-on-error: true
-        uses: lowlighter/metrics@65836723097537a54cd8eb90f61839426b4266b6 # latest
-        with:
-          token: ${{ secrets.METRICS_TOKEN }}
-          user: mw48795472
-          filename: top-langs.svg
-          output_action: none
-          base: ""
-          config_timezone: Asia/Seoul
-          # Indepth mode also includes repositoriesContributedTo (including organizations).
-          # Fetch owned repositories here to avoid counting contributed repositories twice.
-          repositories_affiliations: owner
-          commits_authoring: ${{ vars.METRICS_COMMIT_AUTHORS || 'mw48795472' }}
-          plugin_languages: yes
-          plugin_languages_indepth: yes
-          plugin_languages_sections: most-used
-          plugin_languages_details: percentage
-          plugin_languages_limit: 6
-          plugin_languages_skipped: Tour-Navigator-App
-          plugin_languages_indepth_custom: ${{ vars.LANGUAGE_REPOSITORIES }}
-          plugin_languages_analysis_timeout: 60
-          # Use the overall analysis limit so large repositories can finish.
-          plugin_languages_analysis_timeout_repositories: 0
-          debug: yes
-          plugins_errors_fatal: yes
+        env:
+          INPUT_TOKEN: ${{ secrets.METRICS_TOKEN }}
+          INPUT_USER: mw48795472
+          INPUT_FILENAME: top-langs.svg
+          INPUT_OUTPUT_ACTION: none
+          INPUT_BASE: ""
+          INPUT_CONFIG_TIMEZONE: Asia/Seoul
+          # Indepth mode also includes contributed repositories.
+          INPUT_REPOSITORIES_AFFILIATIONS: owner
+          INPUT_COMMITS_AUTHORING: ${{ vars.METRICS_COMMIT_AUTHORS || 'mw48795472' }}
+          INPUT_PLUGIN_LANGUAGES: "yes"
+          INPUT_PLUGIN_LANGUAGES_INDEPTH: "yes"
+          INPUT_PLUGIN_LANGUAGES_SECTIONS: most-used
+          INPUT_PLUGIN_LANGUAGES_DETAILS: percentage
+          INPUT_PLUGIN_LANGUAGES_LIMIT: "6"
+          INPUT_PLUGIN_LANGUAGES_SKIPPED: Tour-Navigator-App
+          INPUT_PLUGIN_LANGUAGES_INDEPTH_CUSTOM: ${{ vars.LANGUAGE_REPOSITORIES }}
+          INPUT_PLUGIN_LANGUAGES_ANALYSIS_TIMEOUT: "60"
+          INPUT_PLUGIN_LANGUAGES_ANALYSIS_TIMEOUT_REPOSITORIES: "0"
+          INPUT_DEBUG: "yes"
+          INPUT_PLUGINS_ERRORS_FATAL: "yes"
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/metrics-renders"
+          # Keep the token in the environment, outside command arguments and clone URLs.
+          # This helper is limited to github.com and exists only in the disposable container.
+          docker run --init --rm -i \
+            --volume "$GITHUB_EVENT_PATH:$GITHUB_EVENT_PATH:ro" \
+            --volume "$RUNNER_TEMP/metrics-renders:/renders" \
+            --env GITHUB_ACTIONS --env GITHUB_REPOSITORY --env GITHUB_ACTOR \
+            --env GITHUB_EVENT_NAME --env GITHUB_EVENT_PATH \
+            --env GITHUB_RUN_ID --env GITHUB_RUN_NUMBER \
+            --env INPUT_TOKEN --env INPUT_USER --env INPUT_FILENAME \
+            --env INPUT_OUTPUT_ACTION --env INPUT_BASE --env INPUT_CONFIG_TIMEZONE \
+            --env INPUT_REPOSITORIES_AFFILIATIONS --env INPUT_COMMITS_AUTHORING \
+            --env INPUT_PLUGIN_LANGUAGES --env INPUT_PLUGIN_LANGUAGES_INDEPTH \
+            --env INPUT_PLUGIN_LANGUAGES_SECTIONS --env INPUT_PLUGIN_LANGUAGES_DETAILS \
+            --env INPUT_PLUGIN_LANGUAGES_LIMIT --env INPUT_PLUGIN_LANGUAGES_SKIPPED \
+            --env INPUT_PLUGIN_LANGUAGES_INDEPTH_CUSTOM \
+            --env INPUT_PLUGIN_LANGUAGES_ANALYSIS_TIMEOUT \
+            --env INPUT_PLUGIN_LANGUAGES_ANALYSIS_TIMEOUT_REPOSITORIES \
+            --env INPUT_DEBUG --env INPUT_PLUGINS_ERRORS_FATAL \
+            --env GIT_TERMINAL_PROMPT=0 \
+            --env GIT_CONFIG_COUNT=1 \
+            --env GIT_CONFIG_KEY_0=credential.https://github.com.helper \
+            --env 'GIT_CONFIG_VALUE_0=!f() { if [ "$1" = get ]; then printf "username=x-access-token\npassword=%s\n" "$INPUT_TOKEN"; fi; }; f' \
+            --entrypoint node ghcr.io/lowlighter/metrics:v3.34 \
+            --input-type=module <<'METRICS_LAUNCHER'
+          import {execFileSync} from "node:child_process";
+          import {IndepthAnalyzer} from "/metrics/source/plugins/languages/analyzer/indepth.mjs";
+          
+          // Check Git authentication before starting the longer language analysis.
+          execFileSync("git", ["ls-remote", "https://github.com/TourLabOrganization/Adroid-App.git", "HEAD"], {stdio: ["ignore", "ignore", "inherit"]});
+          console.log("::notice::Authenticated Git access to Adroid-App succeeded.");
+          
+          // Include the owner's Claude-assisted commits only in this explicitly approved repository.
+          const originalFilter = IndepthAnalyzer.prototype.filter;
+          if (typeof originalFilter !== "function") throw new Error("Unsupported Metrics analyzer");
+          IndepthAnalyzer.prototype.filter = async function(path, options) {
+            const isApp = path === this.parse("TourLabOrganization/Adroid-App").path;
+            const originalAuthors = this.authoring;
+            if (isApp) this.authoring = [...new Set([...originalAuthors, "^claude <"])];
+            try {
+              const commits = await originalFilter.call(this, path, options);
+              if (isApp) console.log("::notice::Adroid-App selected " + commits.length + " unique non-merge commits (owner and Claude-assisted work).");
+              return commits;
+            } finally {
+              this.authoring = originalAuthors;
+            }
+          };
+          await import("/metrics/source/app/action/index.mjs");
+          METRICS_LAUNCHER
 
       - name: Install contribution languages card
         if: steps.lowlighter_metrics.outcome == 'success'
         run: |
-          test -s /metrics_renders/top-langs.svg
-          cp /metrics_renders/top-langs.svg profile/top-langs.svg
+          test -s "$RUNNER_TEMP/metrics-renders/top-langs.svg"
+          cp "$RUNNER_TEMP/metrics-renders/top-langs.svg" profile/top-langs.svg
 
       - name: Report contribution analysis failure
         if: steps.lowlighter_metrics.outcome == 'failure'
