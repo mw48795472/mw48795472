@@ -138,6 +138,42 @@ jobs:
               this.authoring = originalAuthors;
             }
           };
+          // Bound first-line detection so large single-line assets cannot exhaust V8.
+          // Full file sizes and commit additions are still counted by the original analyzer.
+          const {createRequire} = await import("node:module");
+          const {open, readFile: readWholeFile} = await import("node:fs/promises");
+          const require = createRequire(import.meta.url);
+          const linguistReader = require("/metrics/node_modules/linguist-js/dist/helpers/read-file.js");
+          if (typeof linguistReader.default !== "function") throw new Error("Unsupported Linguist reader");
+          linguistReader.default = async function(filename, onlyFirstLine = false) {
+            if (!onlyFirstLine) return readWholeFile(filename, "utf8");
+            const file = await open(filename, "r");
+            try {
+              const buffer = Buffer.alloc(64 * 1024);
+              const {bytesRead} = await file.read(buffer, 0, buffer.length, 0);
+              return buffer.subarray(0, bytesRead).toString("utf8").split(/\r?\n/, 1)[0];
+            } finally {
+              await file.close();
+            }
+          };
+          
+          // Report the app's actual contribution delta after its complete analysis.
+          const originalAnalyze = IndepthAnalyzer.prototype.analyze;
+          IndepthAnalyzer.prototype.analyze = async function(path, options) {
+            const isApp = path === this.parse("TourLabOrganization/Adroid-App").path;
+            const before = isApp ? {commits: this.results.commits, missed: this.results.missed.commits, stats: {...this.results.stats}, lines: {...this.results.lines}} : null;
+            const result = await originalAnalyze.call(this, path, options);
+            if (isApp) {
+              const commits = this.results.commits - before.commits;
+              const missed = this.results.missed.commits - before.missed;
+              const dartBytes = (this.results.stats.Dart || 0) - (before.stats.Dart || 0);
+              const dartLines = (this.results.lines.Dart || 0) - (before.lines.Dart || 0);
+              console.log("::notice::Adroid-App analyzed " + commits + " commits; skipped " + missed + "; Dart additions: " + dartLines + " lines, " + dartBytes + " bytes.");
+              if (!commits || missed || !dartBytes) throw new Error("Adroid-App analysis is incomplete");
+            }
+            return result;
+          };
+          
           // Match the official action's defaults and URI-encoded input handling.
           const {readFile} = await import("node:fs/promises");
           const {default: yaml} = await import("/metrics/node_modules/js-yaml/index.js");
@@ -183,4 +219,5 @@ jobs:
             exit 0
           fi
           git commit -m "Update README cards"
+          git pull --rebase origin "$GITHUB_REF_NAME"
           git push
