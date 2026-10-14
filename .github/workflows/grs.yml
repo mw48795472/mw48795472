@@ -94,7 +94,18 @@ jobs:
             --entrypoint node ghcr.io/lowlighter/metrics:v3.34 \
             --input-type=module <<'METRICS_LAUNCHER'
           import {execFileSync} from "node:child_process";
-          import {IndepthAnalyzer} from "/metrics/source/plugins/languages/analyzer/indepth.mjs";
+          import {createRequire} from "node:module";
+          const require = createRequire(import.meta.url);
+          const linguistPath = "/metrics/node_modules/linguist-js/dist/index.js";
+          const originalLinguist = require(linguistPath);
+          require.cache[require.resolve(linguistPath)].exports = async function(...args) {
+            const result = await originalLinguist(...args);
+            console.log("Linguist classification completed: " + Object.keys(result.files.results).length + " files");
+            return result;
+          };
+          const {IndepthAnalyzer} = await import("/metrics/source/plugins/languages/analyzer/indepth.mjs");
+          console.log("Linguist version: " + require("/metrics/node_modules/linguist-js/package.json").version);
+          console.log("Analyzer runtime method: " + IndepthAnalyzer.prototype.linguist.toString());
           
           // Normalize the secret exactly as the original action input reader does.
           const token = (process.env.INPUT_TOKEN || "").trim();
@@ -140,9 +151,7 @@ jobs:
           };
           // Bound first-line detection so large single-line assets cannot exhaust V8.
           // Full file sizes and commit additions are still counted by the original analyzer.
-          const {createRequire} = await import("node:module");
           const {open, readFile: readWholeFile} = await import("node:fs/promises");
-          const require = createRequire(import.meta.url);
           const linguistReader = require("/metrics/node_modules/linguist-js/dist/helpers/read-file.js");
           if (typeof linguistReader.default !== "function") throw new Error("Unsupported Linguist reader");
           linguistReader.default = async function(filename, onlyFirstLine = false) {
