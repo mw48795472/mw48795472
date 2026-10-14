@@ -14,7 +14,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     permissions:
       contents: write
     env:
@@ -67,8 +67,9 @@ jobs:
           plugin_languages_limit: 6
           plugin_languages_skipped: Tour-Navigator-App
           plugin_languages_indepth_custom: ${{ vars.LANGUAGE_REPOSITORIES }}
-          plugin_languages_analysis_timeout: 15
-          plugin_languages_analysis_timeout_repositories: 1
+          plugin_languages_analysis_timeout: 60
+          # Use the overall analysis limit so large repositories can finish.
+          plugin_languages_analysis_timeout_repositories: 0
           debug: yes
           plugins_errors_fatal: yes
 
