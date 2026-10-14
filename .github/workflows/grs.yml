@@ -108,6 +108,19 @@ jobs:
           writeFileSync(binaryPath, binarySource);
           require(binaryPath);
           console.log("::notice::Binary reader bounds check verified.");
+          // Recover this approved repository when bundled Linguist excludes its entire tree.
+          // Keep the original classifier and language metadata; only relax file exclusions
+          // for this repository after the normal scan returns no classified files.
+          const bundledLinguistPath = require.resolve("/metrics/node_modules/linguist-js");
+          const bundledLinguist = require(bundledLinguistPath);
+          require.cache[bundledLinguistPath].exports = async function(path, options) {
+            let result = await bundledLinguist(path, options);
+            if (path.endsWith("-TourLabOrganization_data_server") && !Object.keys(result.files.results).length) {
+              result = await bundledLinguist(path, {...options, keepVendored: true, checkIgnored: false});
+              console.log("::notice::data-server recovered " + Object.keys(result.files.results).length + " classified files after an empty scan.");
+            }
+            return result;
+          };
           const {IndepthAnalyzer} = await import("/metrics/source/plugins/languages/analyzer/indepth.mjs");
           
           // Normalize the secret exactly as the original action input reader does.
@@ -157,15 +170,6 @@ jobs:
             } finally {
               this.authoring = originalAuthors;
             }
-          };
-          // Inspect the requested repository's per-commit language classification.
-          const originalDataLinguist = IndepthAnalyzer.prototype.linguist;
-          IndepthAnalyzer.prototype.linguist = async function(path, options) {
-            const result = await originalDataLinguist.call(this, path, options);
-            if (path === this.parse("TourLabOrganization/data-server").path) {
-              console.log("Data-server classification: " + JSON.stringify({sha: options.commit.sha, stats: result.stats, languages: options.cache.languages, files: Object.keys(options.cache.files).length, pythonEdits: options.commit.editions.filter(file => file.path.endsWith(".py")).map(file => ({path: file.path.split("/").slice(-2).join("/"), language: file.language, added: file.added}))}));
-            }
-            return result;
           };
           // Bound first-line detection so large single-line assets cannot exhaust V8.
           // Full file sizes and commit additions are still counted by the original analyzer.
