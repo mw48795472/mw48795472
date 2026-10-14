@@ -157,12 +157,38 @@ jobs:
             }
           };
           
+          // Analyze the requested private app first and report bounded diagnostic phases.
+          const originalRun = IndepthAnalyzer.prototype.run;
+          IndepthAnalyzer.prototype.run = function(options) {
+            const repositories = [...options.repositories];
+            repositories.sort((a, b) => Number(this.parse(b).repo === "TourLabOrganization/Adroid-App") - Number(this.parse(a).repo === "TourLabOrganization/Adroid-App"));
+            return originalRun.call(this, {...options, repositories});
+          };
+          let appScanActive = false;
+          const walkModule = require("/metrics/node_modules/linguist-js/dist/helpers/walk-tree.js");
+          const originalWalk = walkModule.default;
+          walkModule.default = function(data) {
+            if (appScanActive) console.log("App language scan: enumerate files");
+            const result = originalWalk(data);
+            if (appScanActive) console.log("App language scan: enumerated " + result.files.length + " files and " + result.folders.length + " folders");
+            return result;
+          };
+          const boundedRead = linguistReader.default;
+          linguistReader.default = async function(filename, firstLine) {
+            if (appScanActive) console.log("App language scan: " + (firstLine ? "first line" : "full read") + " " + filename.split("/").pop());
+            const result = await boundedRead(filename, firstLine);
+            if (appScanActive) console.log("App language scan: read " + result.length + " characters");
+            return result;
+          };
+          
           // Report the app's actual contribution delta after its complete analysis.
           const originalAnalyze = IndepthAnalyzer.prototype.analyze;
           IndepthAnalyzer.prototype.analyze = async function(path, options) {
             const isApp = path === this.parse("TourLabOrganization/Adroid-App").path;
             const before = isApp ? {commits: this.results.commits, missed: this.results.missed.commits, stats: {...this.results.stats}, lines: {...this.results.lines}} : null;
+            appScanActive = isApp;
             const result = await originalAnalyze.call(this, path, options);
+            appScanActive = false;
             if (isApp) {
               const commits = this.results.commits - before.commits;
               const missed = this.results.missed.commits - before.missed;
