@@ -72,7 +72,7 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/metrics-renders"
           # Keep the token in the environment, outside command arguments and clone URLs.
-          # This helper is limited to github.com and exists only in the disposable container.
+          # Authentication is limited to github.com and the disposable container.
           docker run --init --rm -i \
             --volume "$GITHUB_EVENT_PATH:$GITHUB_EVENT_PATH:ro" \
             --volume "$RUNNER_TEMP/metrics-renders:/renders" \
@@ -90,8 +90,6 @@ jobs:
             --env INPUT_PLUGIN_LANGUAGES_ANALYSIS_TIMEOUT_REPOSITORIES \
             --env INPUT_DEBUG --env INPUT_PLUGINS_ERRORS_FATAL \
             --env GIT_TERMINAL_PROMPT=0 \
-            --env GIT_CONFIG_COUNT=1 \
-            --env GIT_CONFIG_KEY_0=credential.https://github.com.helper \
             --env 'GIT_CONFIG_VALUE_0=!f() { if [ "$1" = get ]; then printf "username=mw48795472\npassword=%s\n" "$INPUT_TOKEN"; fi; }; f' \
             --entrypoint node ghcr.io/lowlighter/metrics:v3.34 \
             --input-type=module <<'METRICS_LAUNCHER'
@@ -110,6 +108,13 @@ jobs:
           const repositoryResponse = await fetch("https://api.github.com/repos/TourLabOrganization/Adroid-App", {headers: apiHeaders});
           if (!repositoryResponse.ok) throw new Error("Adroid-App API access failed (HTTP " + repositoryResponse.status + ")");
           console.log("::notice::METRICS_TOKEN API identity and Adroid-App access verified.");
+          
+          // Pass authentication directly to Git HTTPS without placing it in URLs or arguments.
+          const gitAuth = Buffer.from("mw48795472:" + token).toString("base64");
+          console.log("::add-mask::" + gitAuth);
+          process.env.GIT_CONFIG_COUNT = "1";
+          process.env.GIT_CONFIG_KEY_0 = "http.https://github.com/.extraheader";
+          process.env.GIT_CONFIG_VALUE_0 = "AUTHORIZATION: basic " + gitAuth;
           
           // Check Git authentication before starting the longer language analysis.
           execFileSync("git", ["ls-remote", "https://github.com/TourLabOrganization/Adroid-App.git", "HEAD"], {stdio: ["ignore", "ignore", "inherit"]});
