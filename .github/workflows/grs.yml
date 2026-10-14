@@ -112,9 +112,12 @@ jobs:
           // Pass authentication directly to Git HTTPS without placing it in URLs or arguments.
           const gitAuth = Buffer.from("mw48795472:" + token).toString("base64");
           console.log("::add-mask::" + gitAuth);
-          process.env.GIT_CONFIG_COUNT = "1";
+          // Clear inherited headers before setting the one authorized token.
+          process.env.GIT_CONFIG_COUNT = "2";
           process.env.GIT_CONFIG_KEY_0 = "http.https://github.com/.extraheader";
-          process.env.GIT_CONFIG_VALUE_0 = "AUTHORIZATION: basic " + gitAuth;
+          process.env.GIT_CONFIG_VALUE_0 = "";
+          process.env.GIT_CONFIG_KEY_1 = "http.https://github.com/.extraheader";
+          process.env.GIT_CONFIG_VALUE_1 = "AUTHORIZATION: basic " + gitAuth;
           
           // Check Git authentication before starting the longer language analysis.
           execFileSync("git", ["ls-remote", "https://github.com/TourLabOrganization/Adroid-App.git", "HEAD"], {stdio: ["ignore", "ignore", "inherit"]});
