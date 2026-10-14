@@ -95,31 +95,20 @@ jobs:
             --input-type=module <<'METRICS_LAUNCHER'
           import {execFileSync} from "node:child_process";
           import {createRequire} from "node:module";
-          const require = createRequire(import.meta.url);
-          const linguistPath = "/metrics/node_modules/linguist-js/dist/index.js";
           import {readFileSync, writeFileSync} from "node:fs";
-          let classifierSource = readFileSync(linguistPath, "utf8");
-          const classifierMarker = "for (const file in fileAssociations) {";
-          if (!classifierSource.includes(classifierMarker)) throw new Error("Unsupported Linguist classifier");
-          classifierSource = classifierSource.replace(classifierMarker, classifierMarker + '\n console.log("Linguist classify: " + file.split("/").pop());');
-          classifierSource = classifierSource.replace("// Skip specified categories", 'console.log("Linguist classification phase complete");\n // Skip specified categories');
-          writeFileSync(linguistPath, classifierSource);
-          const pcreModule = require("/metrics/node_modules/linguist-js/dist/helpers/convert-pcre.js");
-          const originalPcre = pcreModule.default;
-          pcreModule.default = function(pattern) {
-            console.log("Linguist regex: " + pattern);
-            const regex = originalPcre(pattern);
-            return {test(content) {const result = regex.test(content); console.log("Linguist regex complete"); return result;}};
-          };
-          const originalLinguist = require(linguistPath);
-          require.cache[require.resolve(linguistPath)].exports = async function(...args) {
-            const result = await originalLinguist(...args);
-            console.log("Linguist classification completed: " + Object.keys(result.files.results).length + " files");
-            return result;
-          };
+          const require = createRequire(import.meta.url);
+          // Backport the upstream protobuf reader bounds check to Metrics' bundled dependency.
+          // https://github.com/gjtorikian/isBinaryFile/blob/main/src/index.ts
+          const binaryPath = require.resolve("/metrics/node_modules/isbinaryfile");
+          let binarySource = readFileSync(binaryPath, "utf8");
+          const readerMethod = /(next\(len\)\s*\{|Reader\.prototype\.next\s*=\s*function\s*\(len\)\s*\{)/g;
+          if ([...binarySource.matchAll(readerMethod)].length !== 1) throw new Error("Unsupported binary reader");
+          binarySource = binarySource.replace(readerMethod, '$1\n if (!Number.isSafeInteger(len) || len < 0 || len > this.size - this.offset) { this.error = true; return []; }');
+          binarySource += '\n{ const reader = new Reader(Buffer.from([1, 2, 3, 4]), 4); if (reader.next(2).join() !== "1,2" || reader.next(2147483647).length !== 0 || !reader.hasError()) throw new Error("Binary reader bounds check failed"); }\n';
+          writeFileSync(binaryPath, binarySource);
+          require(binaryPath);
+          console.log("::notice::Binary reader bounds check verified.");
           const {IndepthAnalyzer} = await import("/metrics/source/plugins/languages/analyzer/indepth.mjs");
-          console.log("Linguist version: " + require("/metrics/node_modules/linguist-js/package.json").version);
-          
           
           // Normalize the secret exactly as the original action input reader does.
           const token = (process.env.INPUT_TOKEN || "").trim();
@@ -180,38 +169,14 @@ jobs:
             }
           };
           
-          // Analyze the requested private app first and report bounded diagnostic phases.
-          const originalRun = IndepthAnalyzer.prototype.run;
-          IndepthAnalyzer.prototype.run = function(options) {
-            const repositories = [...options.repositories];
-            repositories.sort((a, b) => Number(this.parse(b).repo === "TourLabOrganization/Adroid-App") - Number(this.parse(a).repo === "TourLabOrganization/Adroid-App"));
-            return originalRun.call(this, {...options, repositories});
-          };
-          let appScanActive = false;
-          const walkModule = require("/metrics/node_modules/linguist-js/dist/helpers/walk-tree.js");
-          const originalWalk = walkModule.default;
-          walkModule.default = function(data) {
-            if (appScanActive) console.log("App language scan: enumerate files");
-            const result = originalWalk(data);
-            if (appScanActive) console.log("App language scan: enumerated " + result.files.length + " files and " + result.folders.length + " folders");
-            return result;
-          };
-          const boundedRead = linguistReader.default;
-          linguistReader.default = async function(filename, firstLine) {
-            if (appScanActive) console.log("App language scan: " + (firstLine ? "first line" : "full read") + " " + filename.split("/").pop());
-            const result = await boundedRead(filename, firstLine);
-            if (appScanActive) console.log("App language scan: read " + result.length + " characters");
-            return result;
-          };
-          
           // Report the app's actual contribution delta after its complete analysis.
           const originalAnalyze = IndepthAnalyzer.prototype.analyze;
           IndepthAnalyzer.prototype.analyze = async function(path, options) {
             const isApp = path === this.parse("TourLabOrganization/Adroid-App").path;
             const before = isApp ? {commits: this.results.commits, missed: this.results.missed.commits, stats: {...this.results.stats}, lines: {...this.results.lines}} : null;
-            appScanActive = isApp;
+            
             const result = await originalAnalyze.call(this, path, options);
-            appScanActive = false;
+            
             if (isApp) {
               const commits = this.results.commits - before.commits;
               const missed = this.results.missed.commits - before.missed;
