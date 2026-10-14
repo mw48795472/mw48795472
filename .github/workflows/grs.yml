@@ -97,6 +97,20 @@ jobs:
           import {createRequire} from "node:module";
           const require = createRequire(import.meta.url);
           const linguistPath = "/metrics/node_modules/linguist-js/dist/index.js";
+          import {readFileSync, writeFileSync} from "node:fs";
+          let classifierSource = readFileSync(linguistPath, "utf8");
+          const classifierMarker = "for (const file in fileAssociations) {";
+          if (!classifierSource.includes(classifierMarker)) throw new Error("Unsupported Linguist classifier");
+          classifierSource = classifierSource.replace(classifierMarker, classifierMarker + '\n console.log("Linguist classify: " + file.split("/").pop());');
+          classifierSource = classifierSource.replace("// Skip specified categories", 'console.log("Linguist classification phase complete");\n // Skip specified categories');
+          writeFileSync(linguistPath, classifierSource);
+          const pcreModule = require("/metrics/node_modules/linguist-js/dist/helpers/convert-pcre.js");
+          const originalPcre = pcreModule.default;
+          pcreModule.default = function(pattern) {
+            console.log("Linguist regex: " + pattern);
+            const regex = originalPcre(pattern);
+            return {test(content) {const result = regex.test(content); console.log("Linguist regex complete"); return result;}};
+          };
           const originalLinguist = require(linguistPath);
           require.cache[require.resolve(linguistPath)].exports = async function(...args) {
             const result = await originalLinguist(...args);
@@ -105,7 +119,7 @@ jobs:
           };
           const {IndepthAnalyzer} = await import("/metrics/source/plugins/languages/analyzer/indepth.mjs");
           console.log("Linguist version: " + require("/metrics/node_modules/linguist-js/package.json").version);
-          console.log("Analyzer runtime method: " + IndepthAnalyzer.prototype.linguist.toString());
+          
           
           // Normalize the secret exactly as the original action input reader does.
           const token = (process.env.INPUT_TOKEN || "").trim();
