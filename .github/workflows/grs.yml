@@ -180,7 +180,12 @@ jobs:
           IndepthAnalyzer.prototype.analyze = async function(path, options) {
             const repository = claudeRepositories.find(repo => path === this.parse(repo).path);
             const before = repository ? {commits: this.results.commits, missed: this.results.missed.commits, stats: {...this.results.stats}, lines: {...this.results.lines}} : null;
+            // Metrics replaces its color map after each repository; retain earlier languages.
+            const previousColors = {...this.results.colors};
             const result = await originalAnalyze.call(this, path, options);
+            this.results.colors = {...previousColors, ...Object.fromEntries(
+              Object.entries(this.results.colors).filter(([, color]) => color)
+            )};
             if (repository) {
               const commits = this.results.commits - before.commits;
               const missed = this.results.missed.commits - before.missed;
