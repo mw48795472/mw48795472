@@ -147,18 +147,19 @@ jobs:
           
           // Include the owner's Claude-assisted work only in the three approved repositories.
           const claudeRepositories = ["TourLabOrganization/Adroid-App", "TourLabOrganization/frontend", "TourLabOrganization/data-server"];
+          const reportedRepositories = [...claudeRepositories, "TourLabOrganization/Data-Analytics"];
           const selectedContributions = new Map();
           const originalFilter = IndepthAnalyzer.prototype.filter;
           if (typeof originalFilter !== "function") throw new Error("Unsupported Metrics analyzer");
           IndepthAnalyzer.prototype.filter = async function(path, options) {
-            const repository = claudeRepositories.find(repo => path === this.parse(repo).path);
+            const repository = reportedRepositories.find(repo => path === this.parse(repo).path);
             const originalAuthors = this.authoring;
-            if (repository) this.authoring = [...new Set([...originalAuthors, "^claude <"])];
+            if (claudeRepositories.includes(repository)) this.authoring = [...new Set([...originalAuthors, "^claude <"])];
             try {
               const commits = await originalFilter.call(this, path, options);
               if (repository) {
                 selectedContributions.set(repository, commits.length);
-                console.log("::notice::" + repository + " selected " + commits.length + " unique non-merge commits (owner and Claude-assisted work).");
+                console.log("::notice::" + repository + " selected " + commits.length + " unique non-merge contribution commits.");
                 if (!commits.length) throw new Error(repository + " has no matching contribution commits");
               }
               return commits;
@@ -183,10 +184,10 @@ jobs:
             }
           };
           
-          // Verify complete analysis and report each approved repository's contribution delta.
+          // Verify complete analysis and report each organization repository's contribution delta.
           const originalAnalyze = IndepthAnalyzer.prototype.analyze;
           IndepthAnalyzer.prototype.analyze = async function(path, options) {
-            const repository = claudeRepositories.find(repo => path === this.parse(repo).path);
+            const repository = reportedRepositories.find(repo => path === this.parse(repo).path);
             const before = repository ? {commits: this.results.commits, missed: this.results.missed.commits, stats: {...this.results.stats}, lines: {...this.results.lines}} : null;
             // Metrics replaces its color map after each repository; retain earlier languages.
             const previousColors = {...this.results.colors};
@@ -201,7 +202,7 @@ jobs:
                 .map(([language, bytes]) => [language, {bytes: bytes - (before.stats[language] || 0), lines: (this.results.lines[language] || 0) - (before.lines[language] || 0)}])
                 .filter(([, value]) => value.bytes > 0));
               console.log("::notice::" + repository + " analyzed " + commits + " commits; skipped " + missed + ". Language additions: " + JSON.stringify(additions));
-              if (!commits || commits !== selectedContributions.get(repository) || missed || !Object.keys(additions).length)
+              if (!commits || commits !== selectedContributions.get(repository) || missed || (claudeRepositories.includes(repository) && !Object.keys(additions).length))
                 throw new Error(repository + " analysis is incomplete");
               if (repository.endsWith("/Adroid-App") && !additions.Dart?.bytes)
                 throw new Error("Adroid-App Dart contributions are missing");
