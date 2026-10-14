@@ -56,7 +56,9 @@ jobs:
           output_action: none
           base: ""
           config_timezone: Asia/Seoul
-          repositories_affiliations: owner, collaborator, organization_member
+          # Indepth mode also includes repositoriesContributedTo (including organizations).
+          # Fetch owned repositories here to avoid counting contributed repositories twice.
+          repositories_affiliations: owner
           commits_authoring: ${{ vars.METRICS_COMMIT_AUTHORS || 'mw48795472' }}
           plugin_languages: yes
           plugin_languages_indepth: yes
