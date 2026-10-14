@@ -66,6 +66,8 @@ jobs:
           plugin_languages_skipped: Tour-Navigator-App
           plugin_languages_indepth_custom: ${{ vars.LANGUAGE_REPOSITORIES }}
           plugin_languages_analysis_timeout: 15
+          plugin_languages_analysis_timeout_repositories: 1
+          debug: yes
           plugins_errors_fatal: yes
 
       - name: Install contribution languages card
