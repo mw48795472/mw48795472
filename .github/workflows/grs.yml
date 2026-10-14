@@ -42,7 +42,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate languages from personal and organization contributions
-        id: contribution_languages
+        # Metrics derives its image source from this step ID.
+        id: lowlighter_metrics
         if: >-
           env.HAS_METRICS_TOKEN == 'true' &&
           (github.event_name == 'workflow_dispatch' || github.event.schedule == '17 0 * * *')
@@ -68,13 +69,13 @@ jobs:
           plugins_errors_fatal: yes
 
       - name: Install contribution languages card
-        if: steps.contribution_languages.outcome == 'success'
+        if: steps.lowlighter_metrics.outcome == 'success'
         run: |
           test -s /metrics_renders/top-langs.svg
           cp /metrics_renders/top-langs.svg profile/top-langs.svg
 
       - name: Report contribution analysis failure
-        if: steps.contribution_languages.outcome == 'failure'
+        if: steps.lowlighter_metrics.outcome == 'failure'
         run: echo "::warning::Language analysis failed. Keeping the previous card. Check METRICS_TOKEN access and the analysis logs."
 
       - name: Explain personal repositories fallback
