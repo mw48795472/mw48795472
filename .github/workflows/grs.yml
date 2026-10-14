@@ -92,11 +92,24 @@ jobs:
             --env GIT_TERMINAL_PROMPT=0 \
             --env GIT_CONFIG_COUNT=1 \
             --env GIT_CONFIG_KEY_0=credential.https://github.com.helper \
-            --env 'GIT_CONFIG_VALUE_0=!f() { if [ "$1" = get ]; then printf "username=x-access-token\npassword=%s\n" "$INPUT_TOKEN"; fi; }; f' \
+            --env 'GIT_CONFIG_VALUE_0=!f() { if [ "$1" = get ]; then printf "username=mw48795472\npassword=%s\n" "$INPUT_TOKEN"; fi; }; f' \
             --entrypoint node ghcr.io/lowlighter/metrics:v3.34 \
             --input-type=module <<'METRICS_LAUNCHER'
           import {execFileSync} from "node:child_process";
           import {IndepthAnalyzer} from "/metrics/source/plugins/languages/analyzer/indepth.mjs";
+          
+          // Normalize the secret exactly as the original action input reader does.
+          const token = (process.env.INPUT_TOKEN || "").trim();
+          if (!token) throw new Error("METRICS_TOKEN is empty");
+          process.env.INPUT_TOKEN = token;
+          const apiHeaders = {Authorization: "Bearer " + token, Accept: "application/vnd.github+json"};
+          const identityResponse = await fetch("https://api.github.com/user", {headers: apiHeaders});
+          if (!identityResponse.ok) throw new Error("METRICS_TOKEN API authentication failed (HTTP " + identityResponse.status + ")");
+          const identity = await identityResponse.json();
+          if (identity.login !== "mw48795472") throw new Error("METRICS_TOKEN belongs to a different account");
+          const repositoryResponse = await fetch("https://api.github.com/repos/TourLabOrganization/Adroid-App", {headers: apiHeaders});
+          if (!repositoryResponse.ok) throw new Error("Adroid-App API access failed (HTTP " + repositoryResponse.status + ")");
+          console.log("::notice::METRICS_TOKEN API identity and Adroid-App access verified.");
           
           // Check Git authentication before starting the longer language analysis.
           execFileSync("git", ["ls-remote", "https://github.com/TourLabOrganization/Adroid-App.git", "HEAD"], {stdio: ["ignore", "ignore", "inherit"]});
