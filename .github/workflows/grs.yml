@@ -138,6 +138,15 @@ jobs:
               this.authoring = originalAuthors;
             }
           };
+          // Match the official action's defaults and URI-encoded input handling.
+          const {readFile} = await import("node:fs/promises");
+          const {default: yaml} = await import("/metrics/node_modules/js-yaml/index.js");
+          const {inputs: actionInputs} = yaml.load(await readFile("/metrics/action.yml", "utf8"));
+          for (const [name, input] of Object.entries(actionInputs)) {
+            const key = "INPUT_" + name.toUpperCase();
+            const value = process.env[key] ?? (name === "committer_token" ? "" : input.default ?? "");
+            process.env[key] = encodeURIComponent(String(value));
+          }
           await import("/metrics/source/app/action/index.mjs");
           METRICS_LAUNCHER
 
