@@ -137,8 +137,8 @@ jobs:
           execFileSync("git", ["ls-remote", "https://github.com/TourLabOrganization/Adroid-App.git", "HEAD"], {stdio: ["ignore", "ignore", "inherit"]});
           console.log("::notice::Authenticated Git access to Adroid-App succeeded.");
           
-          // Include the owner's Claude-assisted work only in the two approved repositories.
-          const claudeRepositories = ["TourLabOrganization/Adroid-App", "TourLabOrganization/frontend"];
+          // Include the owner's Claude-assisted work only in the three approved repositories.
+          const claudeRepositories = ["TourLabOrganization/Adroid-App", "TourLabOrganization/frontend", "TourLabOrganization/data-server"];
           const selectedContributions = new Map();
           const originalFilter = IndepthAnalyzer.prototype.filter;
           if (typeof originalFilter !== "function") throw new Error("Unsupported Metrics analyzer");
