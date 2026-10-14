@@ -158,6 +158,15 @@ jobs:
               this.authoring = originalAuthors;
             }
           };
+          // Inspect the requested repository's per-commit language classification.
+          const originalDataLinguist = IndepthAnalyzer.prototype.linguist;
+          IndepthAnalyzer.prototype.linguist = async function(path, options) {
+            const result = await originalDataLinguist.call(this, path, options);
+            if (path === this.parse("TourLabOrganization/data-server").path) {
+              console.log("Data-server classification: " + JSON.stringify({sha: options.commit.sha, stats: result.stats, languages: options.cache.languages, files: Object.keys(options.cache.files).length, pythonEdits: options.commit.editions.filter(file => file.path.endsWith(".py")).map(file => ({path: file.path.split("/").slice(-2).join("/"), language: file.language, added: file.added}))}));
+            }
+            return result;
+          };
           // Bound first-line detection so large single-line assets cannot exhaust V8.
           // Full file sizes and commit additions are still counted by the original analyzer.
           const {open, readFile: readWholeFile} = await import("node:fs/promises");
