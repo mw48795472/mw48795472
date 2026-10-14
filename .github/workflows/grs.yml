@@ -137,16 +137,22 @@ jobs:
           execFileSync("git", ["ls-remote", "https://github.com/TourLabOrganization/Adroid-App.git", "HEAD"], {stdio: ["ignore", "ignore", "inherit"]});
           console.log("::notice::Authenticated Git access to Adroid-App succeeded.");
           
-          // Include the owner's Claude-assisted commits only in this explicitly approved repository.
+          // Include the owner's Claude-assisted work only in the two approved repositories.
+          const claudeRepositories = ["TourLabOrganization/Adroid-App", "TourLabOrganization/frontend"];
+          const selectedContributions = new Map();
           const originalFilter = IndepthAnalyzer.prototype.filter;
           if (typeof originalFilter !== "function") throw new Error("Unsupported Metrics analyzer");
           IndepthAnalyzer.prototype.filter = async function(path, options) {
-            const isApp = path === this.parse("TourLabOrganization/Adroid-App").path;
+            const repository = claudeRepositories.find(repo => path === this.parse(repo).path);
             const originalAuthors = this.authoring;
-            if (isApp) this.authoring = [...new Set([...originalAuthors, "^claude <"])];
+            if (repository) this.authoring = [...new Set([...originalAuthors, "^claude <"])];
             try {
               const commits = await originalFilter.call(this, path, options);
-              if (isApp) console.log("::notice::Adroid-App selected " + commits.length + " unique non-merge commits (owner and Claude-assisted work).");
+              if (repository) {
+                selectedContributions.set(repository, commits.length);
+                console.log("::notice::" + repository + " selected " + commits.length + " unique non-merge commits (owner and Claude-assisted work).");
+                if (!commits.length) throw new Error(repository + " has no matching contribution commits");
+              }
               return commits;
             } finally {
               this.authoring = originalAuthors;
@@ -169,21 +175,23 @@ jobs:
             }
           };
           
-          // Report the app's actual contribution delta after its complete analysis.
+          // Verify complete analysis and report each approved repository's contribution delta.
           const originalAnalyze = IndepthAnalyzer.prototype.analyze;
           IndepthAnalyzer.prototype.analyze = async function(path, options) {
-            const isApp = path === this.parse("TourLabOrganization/Adroid-App").path;
-            const before = isApp ? {commits: this.results.commits, missed: this.results.missed.commits, stats: {...this.results.stats}, lines: {...this.results.lines}} : null;
-            
+            const repository = claudeRepositories.find(repo => path === this.parse(repo).path);
+            const before = repository ? {commits: this.results.commits, missed: this.results.missed.commits, stats: {...this.results.stats}, lines: {...this.results.lines}} : null;
             const result = await originalAnalyze.call(this, path, options);
-            
-            if (isApp) {
+            if (repository) {
               const commits = this.results.commits - before.commits;
               const missed = this.results.missed.commits - before.missed;
-              const dartBytes = (this.results.stats.Dart || 0) - (before.stats.Dart || 0);
-              const dartLines = (this.results.lines.Dart || 0) - (before.lines.Dart || 0);
-              console.log("::notice::Adroid-App analyzed " + commits + " commits; skipped " + missed + "; Dart additions: " + dartLines + " lines, " + dartBytes + " bytes.");
-              if (!commits || missed || !dartBytes) throw new Error("Adroid-App analysis is incomplete");
+              const additions = Object.fromEntries(Object.entries(this.results.stats)
+                .map(([language, bytes]) => [language, {bytes: bytes - (before.stats[language] || 0), lines: (this.results.lines[language] || 0) - (before.lines[language] || 0)}])
+                .filter(([, value]) => value.bytes > 0));
+              console.log("::notice::" + repository + " analyzed " + commits + " commits; skipped " + missed + ". Language additions: " + JSON.stringify(additions));
+              if (!commits || commits !== selectedContributions.get(repository) || missed || !Object.keys(additions).length)
+                throw new Error(repository + " analysis is incomplete");
+              if (repository.endsWith("/Adroid-App") && !additions.Dart?.bytes)
+                throw new Error("Adroid-App Dart contributions are missing");
             }
             return result;
           };
