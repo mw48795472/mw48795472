@@ -24,7 +24,8 @@
 3. 선택: METRICS_COMMIT_AUTHORS 변수에 본인 커밋의 작성자 이름/이메일을 쉼표로 구분해 넣습니다.
    기본 작성자 식별자는 mw48795472입니다.
 4. 선택: LANGUAGE_REPOSITORIES 변수에 추가 분석할 공개/접근 가능한 저장소를 owner/repo 형식으로
-   쉼표로 구분해 넣습니다. OREUM-IT의 두 저장소는 기본 분석 대상에 명시적으로 포함합니다.
+   쉼표로 구분해 넣습니다. TourLabOrganization/Tour-Navigator-App과 OREUM-IT의 두 저장소는
+   기본 분석 대상에 명시적으로 포함합니다.
    명시적으로 추가한 저장소는 제외 설정보다 우선합니다.
 5. 분석 시간: 전체 언어 분석은 최대 60분, 카드 저장을 포함한 작업은 최대 90분입니다.
    plugin_languages_analysis_timeout_repositories: 0으로 저장소별 시간 제한을 해제했습니다.
@@ -32,9 +33,9 @@
    시간 제한 경고가 표시되면 해당 실행의 분석 로그를 확인합니다.
 개인·협업·소속 조직 저장소에서 작성자가 일치하는 비병합 커밋 변경량을 분석합니다.
 저장소 접근 권한, 작성자 식별 및 분석 시간 제한에 따라 일부 기여가 누락될 수 있습니다.
-기존 Tour-Navigator-App 제외 설정과 언어 6개 표시 설정은 유지합니다.
+Tour-Navigator-App도 언어 기여 분석에 포함하며, 언어 6개 표시 설정은 유지합니다.
 GitHub Stats는 개인·TourLabOrganization·OREUM-IT에서 토큰으로 접근 가능한 본인 활동을 한 번에 집계합니다.
-조직별 수치를 별도로 더하지 않으며, Tour-Navigator-App의 언어 제외 설정은 GitHub Stats에 적용되지 않습니다.
+조직별 수치를 별도로 더하지 않으며, Tour-Navigator-App은 GitHub Stats와 언어 통계 모두 집계 대상입니다.
 토큰 인증·조직 접근 실패 시 기존 GitHub Stats를 유지합니다. 토큰이 없으면 언어 카드는 개인 저장소 기준입니다.
 통계 생성 실패 시 커밋을 중단하고, 언어 분석 실패 시 직전 언어 카드를 유지합니다.
 
