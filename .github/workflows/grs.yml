@@ -81,7 +81,7 @@ jobs:
         uses: stats-organization/github-readme-stats-action@v2
         with:
           card: top-langs
-          options: username=mw48795472&layout=compact&langs_count=6&exclude_repo=Tour-Navigator-App
+          options: username=mw48795472&layout=compact&langs_count=6
           path: profile/top-langs.svg
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -106,8 +106,8 @@ jobs:
           INPUT_PLUGIN_LANGUAGES_SECTIONS: most-used
           INPUT_PLUGIN_LANGUAGES_DETAILS: percentage
           INPUT_PLUGIN_LANGUAGES_LIMIT: "6"
-          INPUT_PLUGIN_LANGUAGES_SKIPPED: Tour-Navigator-App
-          INPUT_PLUGIN_LANGUAGES_INDEPTH_CUSTOM: OREUM-IT/jeju-tour, OREUM-IT/jeju-tour-flutter, ${{ vars.LANGUAGE_REPOSITORIES }}
+          INPUT_PLUGIN_LANGUAGES_SKIPPED: ""
+          INPUT_PLUGIN_LANGUAGES_INDEPTH_CUSTOM: TourLabOrganization/Tour-Navigator-App, OREUM-IT/jeju-tour, OREUM-IT/jeju-tour-flutter, ${{ vars.LANGUAGE_REPOSITORIES }}
           INPUT_PLUGIN_LANGUAGES_ANALYSIS_TIMEOUT: "60"
           INPUT_PLUGIN_LANGUAGES_ANALYSIS_TIMEOUT_REPOSITORIES: "0"
           INPUT_DEBUG: "yes"
@@ -192,7 +192,8 @@ jobs:
           // Include the owner's Claude-assisted work only in the three approved repositories.
           const claudeRepositories = ["TourLabOrganization/Adroid-App", "TourLabOrganization/frontend", "TourLabOrganization/data-server"];
           const oreumRepositories = ["OREUM-IT/jeju-tour", "OREUM-IT/jeju-tour-flutter"];
-          const reportedRepositories = [...claudeRepositories, "TourLabOrganization/Data-Analytics", ...oreumRepositories];
+          const requiredRepositories = ["TourLabOrganization/Tour-Navigator-App", ...oreumRepositories];
+          const reportedRepositories = [...claudeRepositories, "TourLabOrganization/Data-Analytics", ...requiredRepositories];
           const selectedContributions = new Map();
           const originalFilter = IndepthAnalyzer.prototype.filter;
           if (typeof originalFilter !== "function") throw new Error("Unsupported Metrics analyzer");
@@ -247,7 +248,7 @@ jobs:
                 .map(([language, bytes]) => [language, {bytes: bytes - (before.stats[language] || 0), lines: (this.results.lines[language] || 0) - (before.lines[language] || 0)}])
                 .filter(([, value]) => value.bytes > 0));
               console.log("::notice::" + repository + " analyzed " + commits + " commits; skipped " + missed + ". Language additions: " + JSON.stringify(additions));
-              if (!commits || commits !== selectedContributions.get(repository) || missed || ((claudeRepositories.includes(repository) || oreumRepositories.includes(repository)) && !Object.keys(additions).length))
+              if (!commits || commits !== selectedContributions.get(repository) || missed || ((claudeRepositories.includes(repository) || requiredRepositories.includes(repository)) && !Object.keys(additions).length))
                 throw new Error(repository + " analysis is incomplete");
               if ((repository.endsWith("/Adroid-App") || repository === "OREUM-IT/jeju-tour-flutter") && !additions.Dart?.bytes)
                 throw new Error(repository + " Dart contributions are missing");
@@ -265,7 +266,7 @@ jobs:
             process.env[key] = encodeURIComponent(String(value));
           }
           await import("/metrics/source/app/action/index.mjs");
-          for (const repository of oreumRepositories) {
+          for (const repository of requiredRepositories) {
             if (!selectedContributions.has(repository)) throw new Error(repository + " was not analyzed");
           }
           METRICS_LAUNCHER
