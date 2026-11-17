@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="495" height="220" viewBox="0 0 495 220" role="img" aria-labelledby="title desc">
+  <title id="title">OREUM-IT Contributions — mw48795472</title>
+  <desc id="desc">As of 2026-11-17 KST: 104 authored commits on default branches, 9 authored pull requests, 0 reviewed pull requests by other authors, 0 authored issues. Includes accessible public and private OREUM-IT repositories.</desc>
+  <rect x="0.5" y="0.5" width="494" height="219" rx="4.5" fill="#fff" stroke="#e4e2e2"/>
+  <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
+    <text x="25" y="35" font-size="18" font-weight="600" fill="#2f80ed">OREUM-IT Contributions</text>
+    <g font-size="14" fill="#434d58">
+      <text x="25" y="72">Total Commits:</text><text x="440" y="72" text-anchor="end" font-weight="600">104</text>
+      <text x="25" y="99">PRs Authored:</text><text x="440" y="99" text-anchor="end" font-weight="600">9</text>
+      <text x="25" y="126">PRs Reviewed:</text><text x="440" y="126" text-anchor="end" font-weight="600">0</text>
+      <text x="25" y="153">Issues Authored:</text><text x="440" y="153" text-anchor="end" font-weight="600">0</text>
+    </g>
+    <text x="25" y="187" font-size="12" fill="#586069">mw48795472 · Public + private · 2026-11-17 KST</text>
+    <text x="25" y="205" font-size="11" fill="#586069">All-time snapshot · Commits include merges on default branches</text>
+  </g>
+</svg>
