@@ -1,6 +1,11 @@
 name: Update README cards
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - README.md
+      - .github/workflows/grs.yml
   schedule:
     - cron: "*/30 * * * *"
     # Run the more expensive contribution analysis once a day (09:17 KST).
@@ -23,13 +28,54 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Verify OREUM-IT repository access
+        if: env.HAS_METRICS_TOKEN == 'true'
+        env:
+          METRICS_TOKEN: ${{ secrets.METRICS_TOKEN }}
+        run: |
+          node --input-type=module <<'VERIFY_OREUM_ACCESS'
+          const token = process.env.METRICS_TOKEN.trim();
+          for (const repository of ["OREUM-IT/jeju-tour", "OREUM-IT/jeju-tour-flutter"]) {
+            const response = await fetch("https://api.github.com/repos/" + repository, {
+              headers: {Authorization: "Bearer " + token, Accept: "application/vnd.github+json"},
+            });
+            if (!response.ok) throw new Error("METRICS_TOKEN cannot access " + repository + " (HTTP " + response.status + ")");
+          }
+          console.log("::notice::METRICS_TOKEN can read both OREUM-IT repositories.");
+          VERIFY_OREUM_ACCESS
+
       - name: Generate stats card
         uses: stats-organization/github-readme-stats-action@v2
         with:
           card: stats
-          options: username=mw48795472&show_icons=true
+          options: username=mw48795472&show_icons=true&number_format=long
           path: profile/stats.svg
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.METRICS_TOKEN || secrets.GITHUB_TOKEN }}
+          fail_on_error: true
+
+      # Only display metrics for which the owner filter is supported.
+      # Global stars, PRs, issues, contributed repositories and rank are hidden.
+      - name: Generate OREUM-IT contribution stats card
+        uses: stats-organization/github-readme-stats-action@v2
+        with:
+          card: stats
+          options: username=mw48795472&owner=OREUM-IT&include_all_commits=true&show_icons=true&hide_rank=true&hide=stars,prs,issues,contribs&show=prs_authored,prs_reviewed,issues_authored&custom_title=OREUM-IT%20Contributions&number_format=long
+          path: profile/oreum-it-stats.svg
+          token: ${{ secrets.METRICS_TOKEN || secrets.GITHUB_TOKEN }}
+          fail_on_error: true
+
+      # Publish the fast stats update before the longer language analysis.
+      - name: Commit statistics cards
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add profile/stats.svg profile/oreum-it-stats.svg
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Update personal and OREUM-IT stats"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push
 
       # Keep the existing card working until organization access is configured.
       - name: Generate top languages card (personal repositories fallback)
@@ -45,7 +91,7 @@ jobs:
         id: lowlighter_metrics
         if: >-
           env.HAS_METRICS_TOKEN == 'true' &&
-          (github.event_name == 'workflow_dispatch' || github.event.schedule == '17 0 * * *')
+          (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '17 0 * * *')
         continue-on-error: true
         env:
           INPUT_TOKEN: ${{ secrets.METRICS_TOKEN }}
@@ -63,7 +109,7 @@ jobs:
           INPUT_PLUGIN_LANGUAGES_DETAILS: percentage
           INPUT_PLUGIN_LANGUAGES_LIMIT: "6"
           INPUT_PLUGIN_LANGUAGES_SKIPPED: Tour-Navigator-App
-          INPUT_PLUGIN_LANGUAGES_INDEPTH_CUSTOM: ${{ vars.LANGUAGE_REPOSITORIES }}
+          INPUT_PLUGIN_LANGUAGES_INDEPTH_CUSTOM: OREUM-IT/jeju-tour, OREUM-IT/jeju-tour-flutter, ${{ vars.LANGUAGE_REPOSITORIES }}
           INPUT_PLUGIN_LANGUAGES_ANALYSIS_TIMEOUT: "60"
           INPUT_PLUGIN_LANGUAGES_ANALYSIS_TIMEOUT_REPOSITORIES: "0"
           INPUT_DEBUG: "yes"
@@ -147,7 +193,8 @@ jobs:
           
           // Include the owner's Claude-assisted work only in the three approved repositories.
           const claudeRepositories = ["TourLabOrganization/Adroid-App", "TourLabOrganization/frontend", "TourLabOrganization/data-server"];
-          const reportedRepositories = [...claudeRepositories, "TourLabOrganization/Data-Analytics"];
+          const oreumRepositories = ["OREUM-IT/jeju-tour", "OREUM-IT/jeju-tour-flutter"];
+          const reportedRepositories = [...claudeRepositories, "TourLabOrganization/Data-Analytics", ...oreumRepositories];
           const selectedContributions = new Map();
           const originalFilter = IndepthAnalyzer.prototype.filter;
           if (typeof originalFilter !== "function") throw new Error("Unsupported Metrics analyzer");
@@ -202,10 +249,10 @@ jobs:
                 .map(([language, bytes]) => [language, {bytes: bytes - (before.stats[language] || 0), lines: (this.results.lines[language] || 0) - (before.lines[language] || 0)}])
                 .filter(([, value]) => value.bytes > 0));
               console.log("::notice::" + repository + " analyzed " + commits + " commits; skipped " + missed + ". Language additions: " + JSON.stringify(additions));
-              if (!commits || commits !== selectedContributions.get(repository) || missed || (claudeRepositories.includes(repository) && !Object.keys(additions).length))
+              if (!commits || commits !== selectedContributions.get(repository) || missed || ((claudeRepositories.includes(repository) || oreumRepositories.includes(repository)) && !Object.keys(additions).length))
                 throw new Error(repository + " analysis is incomplete");
-              if (repository.endsWith("/Adroid-App") && !additions.Dart?.bytes)
-                throw new Error("Adroid-App Dart contributions are missing");
+              if ((repository.endsWith("/Adroid-App") || repository === "OREUM-IT/jeju-tour-flutter") && !additions.Dart?.bytes)
+                throw new Error(repository + " Dart contributions are missing");
             }
             return result;
           };
@@ -220,6 +267,9 @@ jobs:
             process.env[key] = encodeURIComponent(String(value));
           }
           await import("/metrics/source/app/action/index.mjs");
+          for (const repository of oreumRepositories) {
+            if (!selectedContributions.has(repository)) throw new Error(repository + " was not analyzed");
+          }
           METRICS_LAUNCHER
 
       - name: Install contribution languages card
@@ -235,7 +285,7 @@ jobs:
       - name: Explain personal repositories fallback
         if: >-
           env.HAS_METRICS_TOKEN != 'true' &&
-          (github.event_name == 'workflow_dispatch' || github.event.schedule == '17 0 * * *')
+          (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '17 0 * * *')
         run: echo "::notice::Set the METRICS_TOKEN Actions secret to enable organization contribution languages. Until then, the card includes personal repositories only."
 
       - name: Generate pin card
