@@ -9,14 +9,6 @@
 | **Infrastructure** | ![AWS](https://img.shields.io/badge/amazonaws-232F3E?style=for-the-badge&logo=amazonaws&logoColor=white) ![Google Play Console](https://img.shields.io/badge/Google%20Play%20Console-414141?style=for-the-badge&logo=googleplay&logoColor=white)|
 | **Tool/Collaboration** | ![Visual Studio](https://custom-icon-badges.demolab.com/badge/Visual%20Studio-5C2D91.svg?style=for-the-badge&logo=visualstudio&logoColor=white) ![Spyder](https://img.shields.io/badge/Spyder-8C0000?style=for-the-badge&logo=spyderide&logoColor=white) ![Cursor](https://img.shields.io/badge/Cursor-000000?style=for-the-badge&logo=cursor&logoColor=white)  ![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white) ![Git](https://img.shields.io/badge/git-F05032?style=for-the-badge&logo=git&logoColor=white) ![Claude](https://img.shields.io/badge/Claude-D97757?style=for-the-badge&logo=claude&logoColor=white) ![Google Colab](https://img.shields.io/badge/Google_Colab-F9AB00?style=for-the-badge&logo=googlecolab&logoColor=white) ![Android Studio](https://img.shields.io/badge/Android%20Studio-3DDC84?style=for-the-badge&logo=androidstudio&logoColor=white)|
 
-## ⛰️ OREUM-IT Activity
-
-[OREUM-IT](https://github.com/OREUM-IT)에서 제주 여행·등반 서비스 개발에 참여하고 있습니다.
-
-- **[오름잇 Flutter 클라이언트](https://github.com/OREUM-IT/jeju-tour-flutter)**: Dart/Flutter 기반 웹·Android·iOS 프로젝트.
-- **주요 구현**: 여행 일정·코스 빌더, 저장 일정, 지도·고도 기반 경로 편집, GPS·사진 인증 챌린지, 실시간 기상 화면과 기존 API 연동.
-- **검증·배포 기반**: Flutter 분석·테스트·웹 빌드 CI와 Vercel 웹 배포 설정.
-
 ## 📊 GitHub Activity
 
 <!--
@@ -51,25 +43,7 @@ Halla-GeoData의 본인 커밋 9개를 모두 분석했고, 전체 189개 커밋
 https://github.com/mw48795472/mw48795472/actions/runs/38590259076
 -->
 
-### Overall Stats
-
-![GitHub Stats](./profile/stats.svg)
-
-개인·조직 저장소에서 GitHub가 계정에 귀속한 활동을 집계합니다. 커밋·기여 저장소는 최근 1년, PR·이슈는 누적이며, Stars는 개인 소유 저장소 기준입니다. 비공개 기여는 설정된 토큰의 접근 범위 내에서 반영됩니다.
-
-### OREUM-IT Stats
-
-[![OREUM-IT Contributions](./profile/oreum-it-stats.svg)](https://github.com/OREUM-IT)
-
-`mw48795472`의 OREUM-IT 내 누적 커밋·작성 PR·리뷰한 PR·작성 이슈를 GitHub API로 집계합니다. 조직 전체 활동량이 아닌 본인 활동이며, 비공개 저장소의 세부 내용은 표시하지 않습니다. 전체 통계와 집계 기간·방식이 다르므로 두 카드를 더하지 않습니다.
-
-조직 카드에 기준일이 표시되어 있으면 마지막으로 확인한 스냅샷입니다. 토큰 인증에 실패하면 기존 조직 카드를 유지하고, 전체 통계는 공개 활동 기준으로 갱신합니다.
-
-### Language Activity
-
+![Stats](./profile/stats.svg)
+![OREUM-IT Stats](./profile/oreum-it-stats.svg)
 ![Language activity](./profile/top-langs.svg)
-
-개인·협업·소속 조직 저장소의 본인 비병합 커밋 변경량을 분석합니다. OREUM-IT 프로젝트를 분석 대상으로 설정했으며, 언어 카드는 마지막으로 성공한 실행 결과를 표시합니다.
-
 ![Pinned](./profile/pin-stats-organization-github-readme-stats.svg)
-   
