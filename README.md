@@ -33,8 +33,9 @@
 개인·협업·소속 조직 저장소에서 작성자가 일치하는 비병합 커밋 변경량을 분석합니다.
 저장소 접근 권한, 작성자 식별 및 분석 시간 제한에 따라 일부 기여가 누락될 수 있습니다.
 기존 Tour-Navigator-App 제외 설정과 언어 6개 표시 설정은 유지합니다.
-토큰이 없으면 통계는 공개 접근 범위, 언어 카드는 개인 저장소 기준으로 갱신합니다.
-토큰 인증·조직 접근 실패 시 공개 전체 통계만 갱신하고, 직전 조직 통계·언어 카드를 유지합니다.
+GitHub Stats는 개인·TourLabOrganization·OREUM-IT에서 토큰으로 접근 가능한 본인 활동을 한 번에 집계합니다.
+조직별 수치를 별도로 더하지 않으며, Tour-Navigator-App의 언어 제외 설정은 GitHub Stats에 적용되지 않습니다.
+토큰 인증·조직 접근 실패 시 기존 GitHub Stats를 유지합니다. 토큰이 없으면 언어 카드는 개인 저장소 기준입니다.
 통계 생성 실패 시 커밋을 중단하고, 언어 분석 실패 시 직전 언어 카드를 유지합니다.
 
 검증 기록 (2026-10-15, 실행 #109): 13분 5초에 완료했습니다.
@@ -44,6 +45,5 @@ https://github.com/mw48795472/mw48795472/actions/runs/38590259076
 -->
 
 ![Stats](./profile/stats.svg)
-![OREUM-IT Stats](./profile/oreum-it-stats.svg)
 ![Language activity](./profile/top-langs.svg)
 ![Pinned](./profile/pin-stats-organization-github-readme-stats.svg)
