@@ -318,10 +318,16 @@ jobs:
             const value = process.env[key] ?? (name === "committer_token" ? "" : input.default ?? "");
             process.env[key] = encodeURIComponent(String(value));
           }
+          // The Metrics action keeps running after this import resolves, so the required
+          // repositories are verified when the process exits, not right after the import.
+          process.on("exit", code => {
+            if (code) return;
+            const missing = requiredRepositories.filter(repository => !selectedContributions.has(repository));
+            if (!missing.length) return;
+            console.log("::error::Language analysis is incomplete. Not analyzed: " + missing.join(", "));
+            process.exitCode = 1;
+          });
           await import("/metrics/source/app/action/index.mjs");
-          for (const repository of requiredRepositories) {
-            if (!selectedContributions.has(repository)) throw new Error(repository + " was not analyzed");
-          }
           METRICS_LAUNCHER
 
       - name: Install contribution languages card
