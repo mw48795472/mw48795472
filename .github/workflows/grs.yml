@@ -178,6 +178,18 @@ jobs:
           import {createRequire} from "node:module";
           import {readFileSync, writeFileSync} from "node:fs";
           const require = createRequire(import.meta.url);
+          // Report the failure reason as an annotation, so it is visible without opening the logs.
+          const recentErrors = [];
+          const rememberError = (...values) => {
+            recentErrors.push(values.map(value => value instanceof Error ? (value.stack || value.message) : String(value)).join(" "));
+            if (recentErrors.length > 3) recentErrors.shift();
+          };
+          const originalConsoleError = console.error;
+          console.error = (...values) => { rememberError(...values); originalConsoleError(...values); };
+          process.on("uncaughtExceptionMonitor", error => rememberError(error));
+          process.on("exit", code => {
+            if (code) console.log("::error::Language analysis failed: " + (recentErrors.join(" | ").replace(/\s+/g, " ").slice(0, 700) || "no error output was captured"));
+          });
           // Backport the upstream protobuf reader bounds check to Metrics' bundled dependency.
           // https://github.com/gjtorikian/isBinaryFile/blob/main/src/index.ts
           const binaryPath = require.resolve("/metrics/node_modules/isbinaryfile");
