@@ -14,7 +14,8 @@
 <!--
 통계·언어 카드 설정 (.github/workflows/grs.yml)
 1. Settings > Secrets and variables > Actions에 METRICS_TOKEN secret을 등록합니다.
-   통계 카드와 언어 분석에서 같은 토큰을 사용합니다. OREUM-IT의 두 저장소를 읽을 수 있어야 합니다.
+   통계 카드와 언어 분석에서 같은 토큰을 사용합니다. 토큰이 읽지 못하는 조직 저장소는
+   경고를 남기고 해당 실행에서 자동으로 제외합니다.
    Metrics 문서의 개인 액세스 토큰 설정을 따릅니다. 조직 정보에는 read:org가 필요할 수 있으며,
    비공개 저장소를 포함할 경우에만 해당 저장소 접근 권한과 조직의 SSO 승인을 추가합니다.
    https://github.com/lowlighter/metrics/blob/master/.github/readme/partials/documentation/setup/action.md
@@ -25,7 +26,7 @@
    기본 작성자 식별자는 mw48795472입니다.
 4. 선택: LANGUAGE_REPOSITORIES 변수에 추가 분석할 공개/접근 가능한 저장소를 owner/repo 형식으로
    쉼표로 구분해 넣습니다. TourLabOrganization/Tour-Navigator-App과 OREUM-IT의 두 저장소는
-   기본 분석 대상에 명시적으로 포함합니다.
+   토큰으로 읽을 수 있으면 기본 분석 대상에 명시적으로 포함합니다.
    명시적으로 추가한 저장소는 제외 설정보다 우선합니다.
 5. 분석 시간: 전체 언어 분석은 최대 60분, 카드 저장을 포함한 작업은 최대 90분입니다.
    plugin_languages_analysis_timeout_repositories: 0으로 저장소별 시간 제한을 해제했습니다.
@@ -36,8 +37,10 @@
 Tour-Navigator-App도 언어 기여 분석에 포함하며, 언어 6개 표시 설정은 유지합니다.
 GitHub Stats는 개인·TourLabOrganization·OREUM-IT에서 토큰으로 접근 가능한 본인 활동을 한 번에 집계합니다.
 조직별 수치를 별도로 더하지 않으며, Tour-Navigator-App은 GitHub Stats와 언어 통계 모두 집계 대상입니다.
-토큰 인증·조직 접근 실패 시 기존 GitHub Stats를 유지합니다. 토큰이 없으면 언어 카드는 개인 저장소 기준입니다.
-통계 생성 실패 시 커밋을 중단하고, 언어 분석 실패 시 직전 언어 카드를 유지합니다.
+토큰이 읽지 못하는 조직 저장소(예: 비공개 저장소 권한이 없는 경우)는 제외하고 나머지로 카드를 갱신합니다.
+토큰이 없거나 무효이거나 통계 생성에 실패하면 GitHub Stats는 공개 활동 기준으로 갱신합니다.
+토큰이 없으면 언어 카드는 개인 저장소 기준이고, 토큰이 무효이면 직전 언어 카드를 유지합니다.
+공개 활동 기준 통계 생성도 실패하면 커밋을 중단하고, 언어 분석 실패 시 직전 언어 카드를 유지합니다.
 
 검증 기록 (2026-10-15, 실행 #109): 13분 5초에 완료했습니다.
 Halla-GeoData의 본인 커밋 9개를 모두 분석했고, 전체 189개 커밋 처리 및
